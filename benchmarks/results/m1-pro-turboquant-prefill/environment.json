@@ -1,0 +1,91 @@
+{
+  "upstream": "3a37a22abc08c1bbdec2f64433e66ef7534c9b69",
+  "fix": "97bc37bec11e75f8c50b1d831a08e7a8f61a859a",
+  "official_native_wheel_tag": "v0.32.0.dev20261103094934",
+  "official_wheel_sha256": "d0f0081e995782c4289d897f5f970264376ebb8733b0bb7eb148224b3390d45b",
+  "device": "Apple M1 Pro, 16 GPU cores, 32 GiB",
+  "os": "macOS 26.6.2 (25G83), arm64",
+  "power": "AC, Low Power Mode off",
+  "idle_before_run": {
+    "gpu_device_utilization_pct": [
+      16,
+      24,
+      21
+    ],
+    "thermal_warning": false,
+    "free_memory_percent": 86
+  },
+  "runtime": {
+    "vllm": "0.32.0+cpu",
+    "mlx": "0.32.4",
+    "mlx-lm": "0.32.3.dev12+g4cfc64784",
+    "mlx-vlm": "0.7.11",
+    "torch": "2.16.0.dev20261013",
+    "numpy": "2.3.5",
+    "python": "3.12.16"
+  },
+  "model": "mlx-community/Qwen3-4B-4bit",
+  "model_revision": "4dcb3d101c2a062e5c1d4bb173588c54ea6c4d25",
+  "precision": {
+    "weights": "4-bit",
+    "K": "q8_0",
+    "V": "q3_0",
+    "whole_model_activations": "bfloat16"
+  },
+  "single_layer": {
+    "query_heads": 32,
+    "kv_heads": 8,
+    "head_dim": 128,
+    "warmup_pairs": 5,
+    "measured_pairs": 31,
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "new_tokens": [
+      16,
+      32,
+      64,
+      128,
+      256
+    ],
+    "total_kv_tokens": [
+      "fresh",
+      8192,
+      32768
+    ]
+  },
+  "offline": {
+    "warmup_pairs": 1,
+    "measured_pairs": 3,
+    "batch_size": 1,
+    "max_num_batched_tokens": 2048,
+    "memory_utilization": 0.4,
+    "new_tokens": 8,
+    "cold_prompt": true,
+    "prompt_tokens": [
+      512,
+      2048
+    ]
+  },
+  "http": {
+    "order": [
+      "compressed",
+      "tiled"
+    ],
+    "servers": "fresh sequential loopback servers, separate API/engine processes",
+    "seed": 853,
+    "warmup_requests": 1,
+    "measured_requests_per_arm": 3,
+    "concurrency": 1,
+    "input_tokens": 2048,
+    "output_tokens": 8,
+    "memory_utilization": 0.4
+  },
+  "environment": {
+    "VLLM_METAL_BACKEND": "mlx",
+    "MLX_ENABLE_TF32": "0",
+    "PYTORCH_ENABLE_MPS_FALLBACK": "0",
+    "HF_HUB_OFFLINE": "1"
+  }
+}

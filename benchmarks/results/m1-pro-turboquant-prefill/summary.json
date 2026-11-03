@@ -1,0 +1,269 @@
+{
+  "single_layer": {
+    "16 new, 16 total": {
+      "time_ratios_by_dtype": {
+        "float16": 0.955321561714532,
+        "bfloat16": 0.8962267186670136
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "16 new, 8192 total": {
+      "time_ratios_by_dtype": {
+        "float16": 1.894936345246894,
+        "bfloat16": 3.1486912441803065
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "16 new, 32768 total": {
+      "time_ratios_by_dtype": {
+        "float16": 2.1438740097710065,
+        "bfloat16": 3.4213618370529235
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "32 new, 32 total": {
+      "time_ratios_by_dtype": {
+        "float16": 0.9473016818029069,
+        "bfloat16": 1.2803670340410214
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "32 new, 8192 total": {
+      "time_ratios_by_dtype": {
+        "float16": 3.6277887901373296,
+        "bfloat16": 6.149050939346006
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "32 new, 32768 total": {
+      "time_ratios_by_dtype": {
+        "float16": 4.35258000447924,
+        "bfloat16": 6.888484058545022
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "64 new, 64 total": {
+      "time_ratios_by_dtype": {
+        "float16": 1.0822652251789515,
+        "bfloat16": 1.8056812271445999
+      },
+      "production_selected": {
+        "float16": false,
+        "bfloat16": false
+      }
+    },
+    "64 new, 8192 total": {
+      "time_ratios_by_dtype": {
+        "float16": 4.4012909452898645,
+        "bfloat16": 5.972775406869079
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "64 new, 32768 total": {
+      "time_ratios_by_dtype": {
+        "float16": 5.12178414496794,
+        "bfloat16": 7.987526608513202
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "128 new, 128 total": {
+      "time_ratios_by_dtype": {
+        "float16": 1.6033446685080925,
+        "bfloat16": 2.485106780628665
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "128 new, 8192 total": {
+      "time_ratios_by_dtype": {
+        "float16": 4.908242908280962,
+        "bfloat16": 7.8662464220994694
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "128 new, 32768 total": {
+      "time_ratios_by_dtype": {
+        "float16": 5.411033477243659,
+        "bfloat16": 8.279073191436412
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "256 new, 256 total": {
+      "time_ratios_by_dtype": {
+        "float16": 2.6195190657546563,
+        "bfloat16": 4.040060931264607
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "256 new, 8192 total": {
+      "time_ratios_by_dtype": {
+        "float16": 5.654895221800893,
+        "bfloat16": 8.474673050756365
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    },
+    "256 new, 32768 total": {
+      "time_ratios_by_dtype": {
+        "float16": 5.750976817961733,
+        "bfloat16": 8.750230974301587
+      },
+      "production_selected": {
+        "float16": true,
+        "bfloat16": true
+      }
+    }
+  },
+  "offline": {
+    "base": {
+      "512": {
+        "median_ttft_s": {
+          "tq-reference": 2.1683189868927,
+          "tq": 1.5612318515777588
+        },
+        "matching_output_pairs": 3,
+        "median_extra_mib": {
+          "tq-reference": 334.5076446533203,
+          "tq": 64.51112747192383
+        },
+        "selected_layers": {
+          "tq-reference": [
+            0
+          ],
+          "tq": [
+            36
+          ]
+        }
+      },
+      "2048": {
+        "median_ttft_s": {
+          "tq-reference": 15.21455192565918,
+          "tq": 6.533609867095947
+        },
+        "matching_output_pairs": 3,
+        "median_extra_mib": {
+          "tq-reference": 672.0314483642578,
+          "tq": 258.0605812072754
+        },
+        "selected_layers": {
+          "tq-reference": [
+            0
+          ],
+          "tq": [
+            36
+          ]
+        }
+      }
+    },
+    "fixed": {
+      "512": {
+        "median_ttft_s": {
+          "tq-reference": 2.15653395652771,
+          "tq": 1.4824681282043457
+        },
+        "matching_output_pairs": 3,
+        "median_extra_mib": {
+          "tq-reference": 334.5076446533203,
+          "tq": 64.51112747192383
+        },
+        "selected_layers": {
+          "tq-reference": [
+            0
+          ],
+          "tq": [
+            36
+          ]
+        }
+      },
+      "2048": {
+        "median_ttft_s": {
+          "tq-reference": 15.090405941009521,
+          "tq": 6.528463125228882
+        },
+        "matching_output_pairs": 3,
+        "median_extra_mib": {
+          "tq-reference": 672.0314483642578,
+          "tq": 258.0605812072754
+        },
+        "selected_layers": {
+          "tq-reference": [
+            0
+          ],
+          "tq": [
+            36
+          ]
+        }
+      }
+    }
+  },
+  "http": {
+    "compressed": {
+      "completed": 3,
+      "failed": 0,
+      "median_ttft_ms": 15127.02483299654,
+      "input_lens": [
+        2048,
+        2048,
+        2048
+      ],
+      "output_lens": [
+        8,
+        8,
+        8
+      ]
+    },
+    "tiled": {
+      "completed": 3,
+      "failed": 0,
+      "median_ttft_ms": 6528.170750010759,
+      "input_lens": [
+        2048,
+        2048,
+        2048
+      ],
+      "output_lens": [
+        8,
+        8,
+        8
+      ]
+    },
+    "identical_response_texts": 3
+  }
+}

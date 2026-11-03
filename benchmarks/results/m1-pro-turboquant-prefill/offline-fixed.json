@@ -1,0 +1,1006 @@
+{
+  "metadata": {
+    "model": "mlx-community/Qwen3-4B-4bit",
+    "device": "Apple M1 Pro",
+    "nax_ready": false,
+    "workspace_ceiling_bytes": 536870912,
+    "versions": {
+      "vllm": "0.32.0+cpu",
+      "mlx": "0.32.4",
+      "mlx-lm": "0.32.3.dev12+g4cfc64784",
+      "mlx-vlm": "0.7.11",
+      "torch": "2.16.0.dev20261013",
+      "numpy": "2.3.5"
+    },
+    "mlx_enable_tf32": "0",
+    "prefix_caching": false,
+    "arguments": {
+      "model": "mlx-community/Qwen3-4B-4bit",
+      "arm": "paired",
+      "prompt_tokens": [
+        512,
+        2048
+      ],
+      "max_tokens": 8,
+      "batch_tokens": 2048,
+      "gpu_memory_utilization": 0.4,
+      "reps": 3,
+      "warmup": 1,
+      "k_quant": "q8_0",
+      "v_quant": "q3_0",
+      "quality_text": null,
+      "prefix_probe": false,
+      "compare_policies": false,
+      "mixed_prefix_probe": false,
+      "prefix_tokens": null,
+      "query_tokens": [
+        1,
+        9,
+        257
+      ],
+      "quality_windows": 16,
+      "quality_window": 1024,
+      "progress_interval": 0,
+      "output": "candidate-model.json"
+    },
+    "load_s": 9.198611250030808
+  },
+  "summaries": [
+    {
+      "kind": "latency",
+      "prompt_tokens": 512,
+      "output_tokens": 8,
+      "median_ttft_s": {
+        "tq-reference": 2.15653395652771,
+        "tq": 1.4824681282043457
+      },
+      "median_gen_wall_s": {
+        "tq-reference": 2.2943126669852063,
+        "tq": 1.6139614169951528
+      }
+    },
+    {
+      "kind": "latency",
+      "prompt_tokens": 2048,
+      "output_tokens": 8,
+      "median_ttft_s": {
+        "tq-reference": 15.090405941009521,
+        "tq": 6.528463125228882
+      },
+      "median_gen_wall_s": {
+        "tq-reference": 15.27028033300303,
+        "tq": 6.709091791999526
+      }
+    }
+  ],
+  "records": [
+    {
+      "phase": "warmup",
+      "trial": -1,
+      "arm": "tq",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 1.5323848724365234,
+      "gen_wall_s": 1.6726102079846896,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "0",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 1.5323848724365234
+        }
+      ],
+      "active_before_bytes": 9784950860,
+      "peak_active_bytes": 9852597328,
+      "peak_extra_bytes": 67646468,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 512,
+        "max_workspace_bytes": 2105472,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "trial": -1,
+      "arm": "tq-reference",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 2.1844887733459473,
+      "gen_wall_s": 2.318408790975809,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "1",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 2.1844887733459473
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10135708060,
+      "peak_extra_bytes": 350756688,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 0,
+      "arm": "tq-reference",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 2.1597719192504883,
+      "gen_wall_s": 2.294662500033155,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "2",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 2.1597719192504883
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10135708060,
+      "peak_extra_bytes": 350756688,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 0,
+      "arm": "tq",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 1.4824681282043457,
+      "gen_wall_s": 1.6139614169951528,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "3",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 1.4824681282043457
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 9852596192,
+      "peak_extra_bytes": 67644820,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 512,
+        "max_workspace_bytes": 2105472,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 1,
+      "arm": "tq",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 1.4878911972045898,
+      "gen_wall_s": 1.623444584023673,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "4",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 1.4878911972045898
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 9852596080,
+      "peak_extra_bytes": 67644708,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 512,
+        "max_workspace_bytes": 2105472,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 1,
+      "arm": "tq-reference",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 2.1506118774414062,
+      "gen_wall_s": 2.2829997909720987,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "5",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 2.1506118774414062
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10135708060,
+      "peak_extra_bytes": 350756688,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 2,
+      "arm": "tq-reference",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 2.15653395652771,
+      "gen_wall_s": 2.2943126669852063,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "6",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 2.15653395652771
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10135708060,
+      "peak_extra_bytes": 350756688,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 2,
+      "arm": "tq",
+      "prompt_tokens": 512,
+      "tokens": [
+        5290,
+        12026,
+        1033,
+        2669,
+        4279,
+        2480,
+        13,
+        20173
+      ],
+      "ttft_s": 1.4822030067443848,
+      "gen_wall_s": 1.612940666032955,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "7",
+          "prompt_tokens": 512,
+          "prompt_sha256": "e5ae8542fc42fc2d56b440914cfbb76c45473d169bdb6c401bd534a78353cc8d",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 512,
+          "tokens": [
+            5290,
+            12026,
+            1033,
+            2669,
+            4279,
+            2480,
+            13,
+            20173
+          ],
+          "output_tokens": 8,
+          "ttft_s": 1.4822030067443848
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 9852596192,
+      "peak_extra_bytes": 67644820,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 512,
+        "max_workspace_bytes": 2105472,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "trial": -1,
+      "arm": "tq",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 6.489166021347046,
+      "gen_wall_s": 6.670331208966672,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "8",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 6.489166021347046
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10055547504,
+      "peak_extra_bytes": 270596132,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 2048,
+        "max_workspace_bytes": 8421888,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "warmup",
+      "trial": -1,
+      "arm": "tq-reference",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 15.126512289047241,
+      "gen_wall_s": 15.307913833996281,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "9",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 15.126512289047241
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10489627420,
+      "peak_extra_bytes": 704676048,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 0,
+      "arm": "tq-reference",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 15.280566215515137,
+      "gen_wall_s": 15.468499124981463,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "10",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 15.280566215515137
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10489627420,
+      "peak_extra_bytes": 704676048,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 0,
+      "arm": "tq",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 6.533807754516602,
+      "gen_wall_s": 6.717361957998946,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "11",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 6.533807754516602
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10055547504,
+      "peak_extra_bytes": 270596132,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 2048,
+        "max_workspace_bytes": 8421888,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 1,
+      "arm": "tq",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 6.528463125228882,
+      "gen_wall_s": 6.709091791999526,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "12",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 6.528463125228882
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10055547504,
+      "peak_extra_bytes": 270596132,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 2048,
+        "max_workspace_bytes": 8421888,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 1,
+      "arm": "tq-reference",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 15.037071228027344,
+      "gen_wall_s": 15.217660666967276,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "13",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 15.037071228027344
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10489627420,
+      "peak_extra_bytes": 704676048,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 2,
+      "arm": "tq-reference",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 15.090405941009521,
+      "gen_wall_s": 15.27028033300303,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "14",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 15.090405941009521
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10489627420,
+      "peak_extra_bytes": 704676048,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 0,
+        "lane_segments": 0,
+        "max_gathered_tokens": 0,
+        "max_workspace_bytes": 0,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    },
+    {
+      "phase": "measured",
+      "trial": 2,
+      "arm": "tq",
+      "prompt_tokens": 2048,
+      "tokens": [
+        6733,
+        8930,
+        1181,
+        14038,
+        518,
+        8063,
+        304,
+        279
+      ],
+      "ttft_s": 6.467586994171143,
+      "gen_wall_s": 6.649051207990851,
+      "num_cached_tokens": 0,
+      "requests": [
+        {
+          "request_index": 0,
+          "request_id": "15",
+          "prompt_tokens": 2048,
+          "prompt_sha256": "a4316ed145e47c380e1389767fa9db69adc5e76187f0fc5ff30440a3169af669",
+          "num_cached_tokens": 0,
+          "remaining_query_tokens": 2048,
+          "tokens": [
+            6733,
+            8930,
+            1181,
+            14038,
+            518,
+            8063,
+            304,
+            279
+          ],
+          "output_tokens": 8,
+          "ttft_s": 6.467586994171143
+        }
+      ],
+      "active_before_bytes": 9784951372,
+      "peak_active_bytes": 10055547504,
+      "peak_extra_bytes": 270596132,
+      "dispatch": {
+        "prefill_layer_calls": 36,
+        "threshold_eligible_layer_calls": 36,
+        "query_thresholds": [
+          128
+        ],
+        "lane_layer_calls": 36,
+        "lane_segments": 36,
+        "max_gathered_tokens": 2048,
+        "max_workspace_bytes": 8421888,
+        "workspace_limit_bytes": 8488200,
+        "prefill_scheduler_steps": 0,
+        "layer_events": []
+      }
+    }
+  ]
+}
