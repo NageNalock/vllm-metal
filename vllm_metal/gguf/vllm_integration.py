@@ -157,7 +157,7 @@ class GGUFEngineIntegration:
         Mirrors the official plugin's public ``is_remote_gguf`` at the shape
         level while keeping the ``gguf`` package out of this module.
         """
-        return RemoteGGUFReference.parse(model) is not None
+        return model is not None and RemoteGGUFReference.parse(model) is not None
 
     @classmethod
     def _resolve_config_source(
@@ -213,7 +213,7 @@ class GGUFEngineIntegration:
 
         @wraps(original)
         def create_model_config(self, *args, **kwargs):
-            remote_ref = RemoteGGUFReference.parse(self.model)
+            remote_ref = RemoteGGUFReference.parse(self.model or "")
             if remote_ref is not None or cls._is_local_gguf(self.model):
                 gguf_model = self.model
                 if remote_ref is None and Path(gguf_model).suffix != cls._GGUF_SUFFIX:
@@ -253,11 +253,7 @@ class GGUFEngineIntegration:
                         **self.model_loader_extra_config,
                         GGUF_WEIGHTS_REVISION_KEY: self.revision,
                     }
-                    self.revision = (
-                        self.tokenizer_revision
-                        if self.tokenizer in (None, config_source)
-                        else None
-                    )
+                    self.revision = None
                 self.model = config_source
             return original(self, *args, **kwargs)
 

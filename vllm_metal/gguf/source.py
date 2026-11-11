@@ -75,8 +75,8 @@ class RemoteGGUFReference:
     quant_type: str
 
     @classmethod
-    def parse(cls, value: str | None) -> Self | None:
-        if value is None or not _REMOTE_REF_RE.fullmatch(value):
+    def parse(cls, value: str) -> Self | None:
+        if not _REMOTE_REF_RE.fullmatch(value):
             return None
         repo_id, quant_type = value.rsplit(":", 1)
         if _QUANT_TAG_RE.search(quant_type) is None:
