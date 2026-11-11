@@ -572,7 +572,9 @@ def test_remote_load_source_downloads_weights_and_config_without_tokenizer(
     )
     monkeypatch.setattr(gguf_source, "snapshot_download", fake_snapshot_download)
     load_config = SimpleNamespace(
-        download_dir=str(tmp_path / "cache"), ignore_patterns=["*.md"]
+        download_dir=str(tmp_path / "cache"),
+        ignore_patterns=["*.md"],
+        model_loader_extra_config={},
     )
     model_config = _remote_gguf_model_config(
         model_weights=f"Qwen/Qwen3-0.6B-GGUF:{quant}",
@@ -626,12 +628,41 @@ def test_remote_load_source_downloads_weights_and_config_without_tokenizer(
 
 def _cache_hub_repo(cache_dir: Path, repo_id: str, commit: str, filename: str) -> Path:
     repo_dir = cache_dir / ("models--" + repo_id.replace("/", "--"))
-    (repo_dir / "refs").mkdir(parents=True)
+    (repo_dir / "refs").mkdir(parents=True, exist_ok=True)
     (repo_dir / "refs" / "main").write_text(commit)
     path = repo_dir / "snapshots" / commit / filename
     path.parent.mkdir(parents=True)
     path.write_text("dummy")
     return path
+
+
+def test_remote_gguf_pins_weights_with_a_separate_config_repo(
+    tmp_path, monkeypatch
+) -> None:
+    cache_dir = tmp_path / "hub"
+    monkeypatch.setattr(hf_constants, "HF_HUB_CACHE", str(cache_dir))
+    monkeypatch.setattr(hf_constants, "HF_HUB_OFFLINE", True)
+    config_path = _cache_hub_repo(cache_dir, "org/model", "a" * 40, "config.json")
+    config_path.write_text(json.dumps(_TINY_CONFIG))
+    weights_commit = "b" * 40
+    weights_path = _cache_hub_repo(
+        cache_dir, "org/model-GGUF", weights_commit, "model-Q8_0.gguf"
+    )
+    _cache_hub_repo(cache_dir, "org/model-GGUF", "c" * 40, weights_path.name)
+
+    vllm_config = _engine_args(
+        model="org/model-GGUF:Q8_0",
+        hf_config_path="org/model",
+        revision=weights_commit,
+        download_dir=str(cache_dir),
+    ).create_engine_config()
+    source = gguf_source.GGUFLoadSource.from_model_config(
+        vllm_config.model_config, vllm_config.load_config
+    )
+
+    assert source == gguf_source.GGUFLoadSource(
+        str(weights_path), str(config_path.parent)
+    )
 
 
 def test_remote_load_source_repins_the_config_repo_revision_offline(

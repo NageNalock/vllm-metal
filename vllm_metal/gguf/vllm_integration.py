@@ -41,7 +41,7 @@ from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig,
 )
 
-from vllm_metal.gguf.source import RemoteGGUFReference
+from vllm_metal.gguf.source import GGUF_WEIGHTS_REVISION_KEY, RemoteGGUFReference
 
 __all__ = ["GGUFEngineIntegration", "MetalGGUFConfig", "register"]
 
@@ -157,7 +157,7 @@ class GGUFEngineIntegration:
         Mirrors the official plugin's public ``is_remote_gguf`` at the shape
         level while keeping the ``gguf`` package out of this module.
         """
-        return model is not None and RemoteGGUFReference.parse(model) is not None
+        return RemoteGGUFReference.parse(model) is not None
 
     @classmethod
     def _resolve_config_source(
@@ -213,10 +213,10 @@ class GGUFEngineIntegration:
 
         @wraps(original)
         def create_model_config(self, *args, **kwargs):
-            is_remote_gguf = cls.is_remote_gguf_reference(self.model)
-            if is_remote_gguf or cls._is_local_gguf(self.model):
+            remote_ref = RemoteGGUFReference.parse(self.model)
+            if remote_ref is not None or cls._is_local_gguf(self.model):
                 gguf_model = self.model
-                if not is_remote_gguf and Path(gguf_model).suffix != cls._GGUF_SUFFIX:
+                if remote_ref is None and Path(gguf_model).suffix != cls._GGUF_SUFFIX:
                     # Detected by magic bytes only: MLX's loader dispatches on
                     # the file extension, so a suffix-less GGUF would die much
                     # later in the worker with a misleading error.
@@ -243,6 +243,21 @@ class GGUFEngineIntegration:
                     self.model_weights = gguf_model
                 if self.served_model_name is None:
                     self.served_model_name = [gguf_model]
+                if (
+                    remote_ref is not None
+                    and config_source != remote_ref.repo_id
+                    and self.revision is not None
+                ):
+                    # Carry the weights pin separately to the worker in LoadConfig.
+                    self.model_loader_extra_config = {
+                        **self.model_loader_extra_config,
+                        GGUF_WEIGHTS_REVISION_KEY: self.revision,
+                    }
+                    self.revision = (
+                        self.tokenizer_revision
+                        if self.tokenizer in (None, config_source)
+                        else None
+                    )
                 self.model = config_source
             return original(self, *args, **kwargs)
 

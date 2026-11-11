@@ -33,6 +33,10 @@ The source priority is:
 --hf-config-path > --tokenizer > GGUF weights repository
 ```
 
+Use `--revision` to pin the weights repository. A separate config repository
+uses its default revision, or `--tokenizer-revision` if it also supplies the
+tokenizer.
+
 vllm-metal downloads exactly one matching `.gguf` file from the remote
 repository. A quant published both as one file and as that file's shards
 resolves to the single file. Missing or ambiguous matches, and quants published
