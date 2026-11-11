@@ -309,7 +309,11 @@ def test_loads_cached_remote_model_offline(tmp_path, monkeypatch):
             tokenizer_revision=None,
             hf_token=None,
         ),
-        SimpleNamespace(download_dir=str(cache_dir), ignore_patterns=None),
+        SimpleNamespace(
+            download_dir=str(cache_dir),
+            ignore_patterns=None,
+            model_loader_extra_config={},
+        ),
     )
     assert source is not None
     model = GGUFModelLoader(

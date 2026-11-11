@@ -17,6 +17,8 @@ from huggingface_hub.utils import filter_repo_objects
 
 from vllm_metal.gguf.adapter import GGUFLoadError, GGUFModelAdapter
 
+GGUF_WEIGHTS_REVISION_KEY = "gguf_weights_revision"
+
 _GGUF_SUFFIX = ".gguf"
 _REMOTE_REF_RE = re.compile(
     r"^[a-zA-Z0-9][a-zA-Z0-9._-]*/[a-zA-Z0-9][a-zA-Z0-9._-]*:[A-Za-z0-9_+-]+$"
@@ -109,8 +111,7 @@ class RemoteGGUFReference:
         ignore_patterns: list[str] | str | None,
         token: bool | str | None,
     ) -> str:
-        # vLLM pins the engine revision to the config repo's commit; resolving
-        # it here re-resolves the requested revision for this weights repo.
+        # Re-resolve if vLLM pinned the revision to the config repo.
         revision = HfApi().resolve_revision(
             self.repo_id,
             revision=revision,
@@ -244,9 +245,14 @@ class GGUFLoadSource:
             GGUFModelAdapter.validate_config_model_type(
                 cls._read_config_model_type(config_dir)
             )
+            weights_revision = model_config.revision
+            if load_config is not None:
+                weights_revision = load_config.model_loader_extra_config.get(
+                    GGUF_WEIGHTS_REVISION_KEY, weights_revision
+                )
             weights_path = remote_ref.resolve(
                 cache_dir=cache_dir,
-                revision=model_config.revision,
+                revision=weights_revision,
                 ignore_patterns=ignore_patterns,
                 token=token,
             )
