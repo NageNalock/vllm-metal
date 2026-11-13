@@ -38,10 +38,10 @@ Six existing TurboQuant routing tests passed on the same build.
 ## Setup
 
 Apple M1 Pro with 16 GPU cores and 32 GiB, macOS 26.6.2 (25G83), on AC power.
-The native code came from the vLLM Metal wheel
-[`0.33.0.dev20261112090227`](https://github.com/vllm-project/vllm-metal/releases/tag/v0.33.0.dev20261112090227)
-at `3451a0149531e4d2889488ed1a80b5a74f6bb2c5`, with MLX 0.32.4,
+The native code came from vLLM Metal `0.33.0.dev20261112090227` at
+`3451a0149531e4d2889488ed1a80b5a74f6bb2c5`, with MLX 0.32.4,
 vLLM 0.33.0+cpu, Python 3.12.16, and NumPy 2.3.5.
+[Release wheel](https://github.com/vllm-project/vllm-metal/releases/tag/v0.33.0.dev20261112090227)
 
 The benchmark uses synthetic attention inputs with Q8_0 keys and 3-bit values.
 It feeds the same inputs to the established kernel and to GQA with 256-token
@@ -63,12 +63,18 @@ no thermal warnings and no new swapouts during the three sweeps.
 
 ## Reproduce
 
-With the pinned wheel and its dependencies installed, run from this checkout.
-The benchmark script is identical at the measured and PR base commits.
+Activate a Python 3.12 environment with the dependencies listed above.
+From the repository root, put the pinned wheel first on `PYTHONPATH`
+so the benchmark loads its compiled Metal kernels. The benchmark script
+is identical at the measured and PR base commits.
 
 ```sh
+wheel_dir=$(mktemp -d)
+uv pip install --target "$wheel_dir" --no-deps \
+  https://github.com/vllm-project/vllm-metal/releases/download/v0.33.0.dev20261112090227/vllm_metal-0.33.0.dev20261112090227-cp312-cp312-macosx_15_0_arm64.whl
 for seed in 1 2 3; do
-  PYTORCH_ENABLE_MPS_FALLBACK=0 PYTHONPATH=. python tools/benchmark/tq_gqa_decode_benchmark.py \
+  PYTORCH_ENABLE_MPS_FALLBACK=0 PYTHONPATH="$wheel_dir:$PWD" \
+    python tools/benchmark/tq_gqa_decode_benchmark.py \
     --geometries 32:8:128:16 24:8:128:16 16:2:128:16 24:4:256:16 \
       24:4:256:32 16:2:256:16 16:2:256:32 \
     --contexts 2048 4096 8192 16384 --requests 1 4 \
