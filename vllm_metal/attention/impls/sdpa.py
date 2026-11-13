@@ -66,7 +66,7 @@ from vllm_metal.attention.impls.varlen_rope_compat import (
     apply_attention_rope,
 )
 from vllm_metal.attention.nax_split import nax_split_kwargs, nax_tile_work
-from vllm_metal.metal import get_ops, paged_attention_capabilities
+from vllm_metal.metal import get_ops, gqa_disable_kwargs, paged_attention_capabilities
 
 logger = init_logger(__name__)
 
@@ -607,19 +607,9 @@ def _gqa_disabled_kwargs(ctx: PagedAttentionContext, ops: Any) -> dict[str, Any]
     """The GQA kill switch for any native call, gated on build support."""
     if ctx.paged_native_capabilities is None:
         ctx.paged_native_capabilities = paged_attention_capabilities(ops)
-    capabilities = ctx.paged_native_capabilities
     if not ctx.gqa_disabled:
         return {}
-    if capabilities["gqa_disable"]:
-        return {"gqa_disabled": True}
-    if capabilities["gqa_decode"]:
-        # Never silently ignore a kill switch on an unrecognized GQA build.
-        raise RuntimeError(
-            "Loaded native GQA build does not advertise disable support; "
-            "rebuild the vllm-metal native extension."
-        )
-    # Pre-GQA native builds already use the established attention path.
-    return {}
+    return gqa_disable_kwargs(ctx.paged_native_capabilities)
 
 
 def _whole_batch_decode_routing_kwargs(

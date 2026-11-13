@@ -65,6 +65,19 @@ def paged_attention_capabilities(ops: ModuleType) -> dict[str, bool]:
     }
 
 
+def gqa_disable_kwargs(capabilities: dict[str, bool]) -> dict[str, bool]:
+    """Return the native arguments needed to honor a request to disable GQA."""
+    if capabilities["gqa_disable"]:
+        return {"gqa_disabled": True}
+    if capabilities["gqa_decode"]:
+        raise RuntimeError(
+            "Loaded native GQA build does not advertise disable support; "
+            "rebuild the vllm-metal native extension."
+        )
+    # Pre-GQA native builds already use the established attention path.
+    return {}
+
+
 @functools.cache
 def _read_metal_source(path: Path) -> str:
     """Read a .metal file and strip local #include directives.
