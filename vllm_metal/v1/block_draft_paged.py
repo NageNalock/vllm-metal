@@ -13,7 +13,7 @@ from vllm_metal.attention.block_tables import build_block_tables
 from vllm_metal.attention.caches.kv_cache import MetalPagedKVCache
 from vllm_metal.attention.caches.storage import KVCacheStorage
 from vllm_metal.attention.impls.bidi_prefill import gather_kv
-from vllm_metal.metal import get_ops, gqa_disable_kwargs, paged_attention_capabilities
+from vllm_metal.metal import get_ops
 from vllm_metal.v1.dflash import DFlashModel
 from vllm_metal.v1.proposer import validate_scheduler_blocks
 
@@ -169,14 +169,7 @@ class BlockDraftPagedCache:
             raise ValueError("Block draft width must fit the trained block_size")
         table_width = (self.max_model_len + self.block_size - 1) // self.block_size
         max_window = max((w or 0 for w in model.context_windows), default=0)
-        # Full-attention calls for one-token drafts can use GQA decode.
-        gqa_kwargs = {}
-        if (
-            width == 1
-            and envs.VLLM_METAL_DISABLE_GQA_DECODE
-            and None in model.context_windows
-        ):
-            gqa_kwargs = gqa_disable_kwargs(paged_attention_capabilities(get_ops()))
+        gqa_disabled = envs.VLLM_METAL_DISABLE_GQA_DECODE
 
         def forward(anchors, keys, values, tables, offsets, slots, ranges, positions):
             h = embed(anchors)
@@ -228,7 +221,7 @@ class BlockDraftPagedCache:
                         -1,
                         # A one-position block has no future block rows.
                         mm_prefix_ranges=ranges if width > 1 else None,
-                        **gqa_kwargs,
+                        gqa_disabled=gqa_disabled,
                     )
                 else:
                     out = self._window_attention(

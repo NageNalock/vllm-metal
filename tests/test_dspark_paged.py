@@ -33,10 +33,9 @@ def make_cache(
     context_windows=(),
     causal_blocks=False,
     max_model_len=64,
-    num_attention_heads=4,
-    num_key_value_heads=2,
-    head_dim=64,
+    attention_shape=(4, 2, 64),
 ):
+    num_attention_heads, num_key_value_heads, head_dim = attention_shape
     cfg = DSparkConfig(
         backbone=replace(
             _config(),
@@ -68,8 +67,8 @@ def make_cache(
         model.quantize_draft_linears()
     spec = FullAttentionSpec(
         block_size=block_size,
-        num_kv_heads=num_key_value_heads,
-        head_size=head_dim,
+        num_kv_heads=cfg.backbone.num_key_value_heads,
+        head_size=cfg.backbone.head_dim,
         dtype=torch.float16 if dtype == mx.float16 else torch.bfloat16,
     )
     names = ("target", "dspark_layers.0.self_attn", "dspark_layers.1.self_attn")
@@ -116,44 +115,6 @@ def test_ragged_proposals_commit_verified_features_and_reuse_pages(
 @pytest.mark.parametrize("width", [1, 7])
 def test_candidate_limited_proposals_commit_features_and_reuse_pages(dtype, width):
     _check_ragged_proposals(dtype, 16, width, True, True, draft_topk=8)
-
-
-@pytest.mark.parametrize("disable_gqa", [False, True])
-def test_single_token_draft_honors_gqa_disable(monkeypatch, disable_gqa):
-    monkeypatch.setenv("VLLM_METAL_DISABLE_GQA_DECODE", str(int(disable_gqa)))
-    # Qwen3-4B draft geometry and enough visible KV for the GQA work threshold.
-    model, cache = make_cache(
-        mx.bfloat16,
-        max_model_len=4096,
-        num_attention_heads=32,
-        num_key_value_heads=8,
-        head_dim=128,
-    )
-    length = cache.max_model_len - 1
-    blocks = list(range(1, cache.max_model_len // cache.block_size + 1))
-    cfg = model.config.backbone
-    features = [
-        mx.zeros((length, cfg.hidden_size), dtype=mx.bfloat16)
-        for _ in cfg.target_layer_ids
-    ]
-    cache.write_context(features, [(blocks, 0, length)])
-    draft = cache.compile_draft(num_draft_tokens=1)
-
-    ops = get_ops()
-    previous = ops._set_paged_dispatch_diagnostics(True)
-    ops._override_detected_gpu_core_count_for_test(10)
-    try:
-        ids, _, _ = draft(mx.array([11]), [(blocks, length)])
-        mx.eval(ids)
-        route = ops.last_paged_dispatch()
-    finally:
-        ops._override_detected_gpu_core_count_for_test(-1)
-        ops._set_paged_dispatch_diagnostics(previous)
-
-    if disable_gqa:
-        assert route in {"per_token_ps0", "per_token_ps512"}
-    else:
-        assert route == "gqa_decode"
 
 
 @pytest.mark.parametrize("dtype", [mx.float16, mx.bfloat16])
@@ -362,6 +323,34 @@ def test_one_token_proposal_uses_one_lookahead_slot_at_page_boundary():
         rtol=0.006,
     )
     assert actual[0].shape == (1, 1)
+
+
+def test_single_token_draft_honors_gqa_disable(monkeypatch):
+    # Use Qwen3-4B draft geometry and enough live context to qualify for GQA.
+    dtype = mx.float16
+    model, cache = make_cache(dtype, max_model_len=4096, attention_shape=(32, 8, 128))
+    length = cache.max_model_len - 1
+    blocks = list(range(1, cache.max_model_len // cache.block_size + 1))
+    cfg = model.config.backbone
+    features = mx.zeros((length, cfg.hidden_size), dtype=dtype)
+    cache.write_context([features] * len(cfg.target_layer_ids), [(blocks, 0, length)])
+
+    ops = get_ops()
+    previous = ops._set_paged_dispatch_diagnostics(True)
+    ops._override_detected_gpu_core_count_for_test(10)
+    routes = []
+    try:
+        for disabled in ("0", "1"):
+            monkeypatch.setenv("VLLM_METAL_DISABLE_GQA_DECODE", disabled)
+            draft = cache.compile_draft(num_draft_tokens=1)
+            mx.eval(draft(mx.array([4]), [(blocks, length)]))
+            routes.append(ops.last_paged_dispatch())
+    finally:
+        ops._override_detected_gpu_core_count_for_test(-1)
+        ops._set_paged_dispatch_diagnostics(previous)
+
+    assert routes[0] == "gqa_decode"
+    assert routes[1] in {"per_token_ps0", "per_token_ps512"}
 
 
 @pytest.mark.parametrize(
