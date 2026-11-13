@@ -135,11 +135,11 @@ Every eligible call additionally requires:
   decode prefix requires a plan describing exactly its rows.
 - A verification window of at most 1.
 - Matching FP16/BF16 query, key-cache and value-cache types, or an FP16/BF16
-  query over a TurboQuant cache (int8/uint8 K, packed uint8 V). TurboQuant
-  takes the same work budget but only P256: its producer measured faster at
-  P256 than P512 below 64K tokens on M5 and M1 Max. A TurboQuant decode batch
-  reaches this path only as a whole batch; the compressed fallback rows of a
-  bounded TurboQuant prefill keep the established kernels.
+  query over a TurboQuant cache (int8/uint8 K, packed uint8 V). TurboQuant uses
+  P256 and normally follows the same work budget. On the 16-core M1 Pro,
+  P256 starts at 3,072 tokens for a single request with 256-wide heads,
+  signed 8-bit keys and 3-bit values. TurboQuant uses GQA only in batches
+  made up entirely of decode rows.
 - At most **512 MiB total GQA scratch per attention call**. With multi-request
   length metadata, padded rows use compact scratch:
   `Q * sum(ceil(length_i / P)) * (2 * head_dim + 8) + 8 * (B + 1)` bytes for
@@ -349,9 +349,8 @@ enablement or performance claims of this two-tier routing policy:
    and their scales in place, dequantizing each lane's slice in registers with
    no per-step materialization of the history. Its partials stay in the
    rotated V domain, and the TurboQuant reduce applies the single inverse FWHT,
-   as the split-KV TurboQuant path does. Default routing admits it under the
-   P256 work budget (see the eligibility list above). On M1 Max the budget
-   leaves some short-context head256 shapes on the established kernels even
+   as the split-KV TurboQuant path does. On M1 Max the work budget leaves
+   some short-context head256 shapes on the established kernels even
    though the producer is faster there; a TurboQuant-specific budget could
    admit them. `tools/benchmark/tq_gqa_decode_benchmark.py` times the kernels.
 4. **Sliding windows:** bound loads and split selection by the actual visible

@@ -142,10 +142,12 @@ std::string gqa_decode_kernel_name(
 std::string gqa_decode_tq_kernel_name(
     const std::string& dtype, const std::string& k_cache_dtype, int head_size,
     int block_size, int partition_size);
+enum class GqaCacheFormat { Unquantized, TurboQuant, TurboQuantQ8Q3 };
 int gqa_decode_plan_for_lengths(
     int num_heads, int num_kv_heads, int head_size,
     const GqaDecodeLengthPlan& plan, int gpu_cores, int block_size,
-    const std::string& gpu_arch = "", int max_seq_len = 0, bool turboquant = false);
+    const std::string& gpu_arch = "", int max_seq_len = 0,
+    GqaCacheFormat cache_format = GqaCacheFormat::Unquantized);
 void init_library_path(const std::string& name, const std::string& path);
 void init_nax_library_path(const std::string& path);
 std::string dtype_to_metal(Dtype dt);
