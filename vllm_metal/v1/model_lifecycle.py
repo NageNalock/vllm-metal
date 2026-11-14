@@ -389,7 +389,8 @@ class ModelLifecycle:
             else AWQQuantLoader.for_model(model_name, revision=revision)
         )
 
-        expert_cache_bytes = get_config().moe_expert_cache_bytes
+        metal_config = get_config()
+        expert_cache_bytes = metal_config.moe_expert_cache_bytes
         if expert_cache_bytes and (is_gguf or use_mlx_vlm or awq_loader is not None):
             raise NotImplementedError(
                 "MoE expert offloading supports mlx-lm text checkpoints only, "
@@ -429,7 +430,11 @@ class ModelLifecycle:
             )
             if expert_cache_bytes:
                 self._runner._expert_store = ExpertStore.install(
-                    model, model_name, revision, expert_cache_bytes
+                    model,
+                    model_name,
+                    revision,
+                    expert_cache_bytes,
+                    max_experts_per_pass=metal_config.moe_expert_max_experts_per_pass,
                 )
 
         loaded_from = (

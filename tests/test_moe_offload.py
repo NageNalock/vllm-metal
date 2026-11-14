@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -74,10 +75,22 @@ def checkpoint(request, tmp_path) -> tuple[nn.Module, Path]:
     return model, model_dir
 
 
-def _offloaded_twin(reference: nn.Module, model_dir: Path, cache_bytes: int):
+def _offloaded_twin(
+    reference: nn.Module,
+    model_dir: Path,
+    cache_bytes: int,
+    *,
+    max_experts_per_pass: int | None = None,
+):
     twin = _tiny_olmoe(seed=2)
     twin.load_weights(tree_flatten(reference.parameters()))
-    store = ExpertStore.install(twin, str(model_dir), None, cache_bytes)
+    store = ExpertStore.install(
+        twin,
+        str(model_dir),
+        None,
+        cache_bytes,
+        max_experts_per_pass=max_experts_per_pass,
+    )
     return twin, store
 
 
@@ -124,6 +137,70 @@ def test_reserve_covers_the_cache_and_one_stacked_layer(checkpoint) -> None:
     assert store.reserved_bytes == cache_bytes + NUM_EXPERTS * _expert_bytes(reference)
 
 
+def test_single_pass_does_not_leave_experts_over_the_bounded_cache(checkpoint) -> None:
+    reference, model_dir = checkpoint
+    cache_bytes = _expert_bytes(reference)
+    twin, store = _offloaded_twin(
+        reference, model_dir, cache_bytes, max_experts_per_pass=2
+    )
+    resident = reference.model.layers[0].mlp.switch_mlp
+    streamed = twin.model.layers[0].mlp.switch_mlp
+    x = mx.random.normal((1, 1, 64))
+    routes = mx.array([[[0, 1]]], mx.uint32)
+
+    assert mx.array_equal(streamed(x, routes), resident(x, routes))
+    assert store.bytes <= cache_bytes
+
+
+@pytest.mark.parametrize("repeats", [1, 16])
+def test_bounded_passes_preserve_expert_output_and_cache_hits(
+    checkpoint, repeats: int
+) -> None:
+    reference, model_dir = checkpoint
+    expert_bytes = _expert_bytes(reference)
+    cache_bytes = expert_bytes
+    twin, store = _offloaded_twin(
+        reference, model_dir, cache_bytes, max_experts_per_pass=2
+    )
+    path = "model.layers.0.mlp.switch_mlp"
+    resident = reference.model.layers[0].mlp.switch_mlp
+    streamed = twin.model.layers[0].mlp.switch_mlp
+    routes = mx.array([[[7, 1], [1, 4], [4, 0], [2, 7]] * repeats], mx.uint32)
+    x = mx.random.normal((1, 4 * repeats, 64))
+
+    store.get(path, [7])
+    assert mx.array_equal(streamed(x, routes), resident(x, routes))
+    # A hit in the last group survives the earlier misses even with one slot.
+    assert (store.hits, store.misses) == (1, 5)
+    assert store.bytes <= cache_bytes
+    assert store.reserved_bytes == cache_bytes + 4 * expert_bytes
+
+
+def test_grouped_forward_merges_contiguous_weight_reads(tmp_path, monkeypatch) -> None:
+    reference = _tiny_olmoe(seed=1)
+    path = tmp_path / "stacked"
+    _save_checkpoint(reference, path, per_expert=False)
+    twin, _ = _offloaded_twin(
+        reference, path, NUM_EXPERTS * _expert_bytes(reference), max_experts_per_pass=2
+    )
+    calls = []
+    pread = os.pread
+
+    def record_read(fd, size, offset):
+        calls.append(size)
+        return pread(fd, size, offset)
+
+    monkeypatch.setattr("vllm_metal.moe_offload.os.pread", record_read)
+    x = mx.random.normal((1, 2, 64))
+    routes = mx.array([[[0, 1], [2, 3]]], mx.uint32)
+    resident = reference.model.layers[0].mlp.switch_mlp
+    streamed = twin.model.layers[0].mlp.switch_mlp
+
+    assert mx.array_equal(streamed(x, routes), resident(x, routes))
+    assert sum(calls) == 4 * _expert_bytes(reference)
+    assert len(calls) < 4 * 3 * 3
+
+
 @pytest.mark.parametrize(
     ("drop", "match"),
     [
@@ -155,6 +232,23 @@ class TestConfig:
         config = MetalConfig(mlx_device="gpu")
         config.apply_moe_expert_offload({"turboquant": True})
         assert config.moe_expert_cache_bytes == 0
+
+    def test_max_experts_per_pass_is_optional(self) -> None:
+        config = MetalConfig(mlx_device="gpu")
+        config.apply_moe_expert_offload(
+            {"moe_expert_offload": {"cache_gb": 1.5, "max_experts_per_pass": 128}}
+        )
+        assert config.moe_expert_max_experts_per_pass == 128
+        config.apply_moe_expert_offload({"moe_expert_offload": {"cache_gb": 1.5}})
+        assert config.moe_expert_max_experts_per_pass is None
+
+    @pytest.mark.parametrize("limit", [True, 0, -1, 1.5, "2", None])
+    def test_invalid_expert_pass_limit(self, limit) -> None:
+        config = MetalConfig(mlx_device="gpu")
+        with pytest.raises(ValueError, match="max_experts_per_pass"):
+            config.apply_moe_expert_offload(
+                {"moe_expert_offload": {"cache_gb": 1.5, "max_experts_per_pass": limit}}
+            )
 
     @pytest.mark.parametrize(
         "options",

@@ -277,7 +277,9 @@ class TestModelLifecycle:
             monkeypatch.setattr(
                 model_lifecycle,
                 "get_config",
-                lambda: SimpleNamespace(moe_expert_cache_bytes=4096),
+                lambda: SimpleNamespace(
+                    moe_expert_cache_bytes=4096, moe_expert_max_experts_per_pass=128
+                ),
             )
             install_experts = Mock(return_value=object())
             monkeypatch.setattr(model_lifecycle.ExpertStore, "install", install_experts)
@@ -304,7 +306,7 @@ class TestModelLifecycle:
             )
         if backend == "offload":
             install_experts.assert_called_once_with(
-                model, "resolved/model", revision, 4096
+                model, "resolved/model", revision, 4096, max_experts_per_pass=128
             )
             assert runner._expert_store is install_experts.return_value
         if backend not in {"vlm", "lfm3"}:

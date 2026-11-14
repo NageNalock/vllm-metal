@@ -6,9 +6,8 @@ checkpoint on disk and each MoE layer reads the experts its tokens route to,
 through a cache in unified memory. This serves MoE models that do not fit in
 memory when fully loaded.
 
-The compute path is unchanged. The experts a step touches are stacked and the
-layer runs mlx-lm's own `SwitchGLU` forward on them, so outputs are identical
-to the fully resident model.
+The layer stacks the experts a step touches and uses mlx-lm's expert
+projections with the original expert weights and routing.
 
 ## Quick Start
 
@@ -22,11 +21,20 @@ vllm serve mlx-community/Qwen1.5-MoE-A2.7B-Chat-4bit \
 | Key | Description |
 |-----|-------------|
 | `moe_expert_offload.cache_gb` | Memory for cached experts, in GiB. Required to enable offloading. |
+| `moe_expert_offload.max_experts_per_pass` | Optional positive integer. Bounds how many experts are loaded and stacked for each group within a layer. |
 
-The KV cache budget reserves `cache_gb` plus one layer of experts before
-sizing, since a long prefill stacks nearly every expert of a layer at once. The
-resident model, the expert cache and the KV cache then fit
-`--gpu-memory-utilization` together.
+The KV cache budget reserves `cache_gb` plus temporary expert weights before
+sizing. By default the reservation covers a full layer, since a long prefill
+can touch nearly all of its experts. With `max_experts_per_pass`, the temporary
+reservation covers one group's loaded weights and its packed stack. The layer
+processes larger routed sets one group at a time, which can increase the
+time to the first token. Steps that stay within the limit execute in one pass.
+Grouped passes merge adjacent reads in the original checkpoint to reduce
+the number of requests to the SSD.
+
+For Qwen3-Coder-Next 4-bit, a full layer's expert stack is 864 MiB. A limit
+of 128 experts reduces that stack to 216 MiB, with a total temporary
+reservation of 432 MiB that also covers the individual expert arrays.
 
 ## Choosing the cache size
 

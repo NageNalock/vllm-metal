@@ -4,9 +4,8 @@
 Experts are the bulk of an MoE checkpoint, but each token uses only ``top_k``
 of them. With offloading enabled, the expert tensors stay on disk and each
 MoE layer reads the experts its tokens route to, through a byte-bounded LRU
-cache. The compute path is unchanged: the touched experts are stacked and the
-layer runs mlx-lm's own ``SwitchGLU`` forward on them, so outputs are identical
-to the fully resident model.
+cache. The touched experts are stacked and run through mlx-lm's projections.
+An optional per-pass limit bounds the stack when many experts are routed.
 
 Two checkpoint layouts are read in place: experts stacked under
 ``<block>.switch_mlp`` (mlx-community conversions) and one tensor per expert
@@ -32,6 +31,7 @@ import numpy as np
 from huggingface_hub import snapshot_download
 from mlx.utils import tree_unflatten
 from mlx_lm.models.switch_layers import SwitchGLU
+from numpy.typing import NDArray
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
@@ -75,18 +75,24 @@ class ExpertStore:
     COMPONENTS = ("weight", "scales", "biases")
     # Parallel preads per batch of cache misses; SSD reads are latency bound.
     READ_THREADS = 8
+    # Leave enough independent reads for the worker pool on wide prefill groups.
+    MAX_MERGED_READ_BYTES = 4 * 1024**2
 
     def __init__(
         self,
         index: dict[str, TensorLocation],
         cache_bytes: int,
         stack_bytes: int,
+        max_experts_per_pass: int | None = None,
     ) -> None:
         self._index = index
         self._cache_bytes = cache_bytes
-        # A forward stacks the experts it touches on top of the cache, and a
-        # long prefill touches nearly every expert of a layer.
-        self.reserved_bytes = cache_bytes + stack_bytes
+        self.max_experts_per_pass = max_experts_per_pass
+        # Grouped execution may briefly keep both the per-expert arrays and
+        # their packed stack outside the cache budget.
+        self.reserved_bytes = cache_bytes + stack_bytes * (
+            1 if max_experts_per_pass is None else 2
+        )
         self._entries: OrderedDict[tuple[str, int], dict[str, dict[str, mx.array]]] = (
             OrderedDict()
         )
@@ -107,6 +113,8 @@ class ExpertStore:
         model_name: str,
         revision: str | None,
         cache_bytes: int,
+        *,
+        max_experts_per_pass: int | None = None,
     ) -> ExpertStore:
         """Stream the experts of a lazily loaded model and load everything else.
 
@@ -118,10 +126,17 @@ class ExpertStore:
         for path, module in targets:
             cls._validate_layer(index, path, module)
         stack_bytes = max(
-            cls._layer_bytes(index, path, module.gate_proj.num_experts)
+            cls._pass_bytes(
+                index, path, module.gate_proj.num_experts, max_experts_per_pass
+            )
             for path, module in targets
         )
-        store = cls(index, cache_bytes, stack_bytes)
+        limit = max_experts_per_pass
+        if limit is not None and all(
+            module.gate_proj.num_experts <= limit for _, module in targets
+        ):
+            limit = None
+        store = cls(index, cache_bytes, stack_bytes, limit)
         model.update_modules(
             tree_unflatten(
                 [
@@ -141,7 +156,11 @@ class ExpertStore:
         return store
 
     def get(
-        self, module_path: str, experts: Iterable[int]
+        self,
+        module_path: str,
+        experts: Iterable[int],
+        *,
+        preserve: set[int] | None = None,
     ) -> list[dict[str, dict[str, mx.array]]]:
         """Return ``{projection: {component: array}}`` per expert, in order."""
         experts = list(experts)
@@ -158,8 +177,13 @@ class ExpertStore:
             )
             is not None
         ]
-        # Reads run in parallel; arrays are created on the calling thread.
-        raws = list(self._pool.map(lambda job: self._read(job[3]), jobs))
+        pieces = [job[3] for job in jobs]
+        # Wide groups often route to adjacent expert rows in the same tensor.
+        raws: list[bytes] | list[memoryview]
+        if preserve is not None:
+            raws = self._read_adjacent(pieces)
+        else:
+            raws = list(self._pool.map(self._read, pieces))
         for (expert, projection, component, piece), raw in zip(jobs, raws, strict=True):
             entry = self._entries.setdefault(
                 (module_path, expert), {p: {} for p in self.PROJECTIONS}
@@ -170,8 +194,21 @@ class ExpertStore:
         self.hits += len(experts) - len(missing)
         for expert in experts:
             self._entries.move_to_end((module_path, expert))
-        self._evict(keep=len(experts))
-        return [self._entries[(module_path, expert)] for expert in experts]
+        current = [self._entries[(module_path, expert)] for expert in experts]
+        if preserve is None:
+            # The unbounded path retains the whole current set. With a pass
+            # limit, the returned arrays stay alive independently of the cache.
+            self._evict(keep=len(current) if self.max_experts_per_pass is None else 0)
+        else:
+            # The returned entries can be used even if the cache evicts them.
+            # Keep any already-cached weights needed by later groups.
+            for expert in sorted(preserve):
+                self._entries.move_to_end((module_path, expert))
+            self._evict(keep=len(preserve))
+        return current
+
+    def cached_experts(self, module_path: str, experts: list[int]) -> set[int]:
+        return {expert for expert in experts if (module_path, expert) in self._entries}
 
     def clear(self) -> None:
         self._entries.clear()
@@ -180,9 +217,49 @@ class ExpertStore:
     def _read(self, piece: ExpertSlice) -> bytes:
         return os.pread(self._handles[piece.location.path], piece.nbytes, piece.offset)
 
+    def _read_adjacent(self, pieces: list[ExpertSlice]) -> list[memoryview]:
+        """Read adjacent slices together, then return views in caller order."""
+        groups: list[list[tuple[int, ExpertSlice]]] = []
+        for i, piece in sorted(
+            enumerate(pieces), key=lambda item: (item[1].location.path, item[1].offset)
+        ):
+            if groups:
+                first, last = groups[-1][0][1], groups[-1][-1][1]
+                end = piece.offset + piece.nbytes
+                if (
+                    piece.location.path == first.location.path
+                    and last.offset + last.nbytes == piece.offset
+                    and end - first.offset <= self.MAX_MERGED_READ_BYTES
+                ):
+                    groups[-1].append((i, piece))
+                    continue
+            groups.append([(i, piece)])
+
+        def read_group(
+            group: list[tuple[int, ExpertSlice]],
+        ) -> list[tuple[int, memoryview]]:
+            first, last = group[0][1], group[-1][1]
+            nbytes = last.offset + last.nbytes - first.offset
+            data = memoryview(
+                os.pread(self._handles[first.location.path], nbytes, first.offset)
+            )
+            if len(data) != nbytes:
+                raise OSError(
+                    f"Short expert read from {first.location.path} at {first.offset}: "
+                    f"expected {nbytes} bytes, got {len(data)}"
+                )
+            views = []
+            for i, piece in group:
+                offset = piece.offset - first.offset
+                views.append((i, data[offset : offset + piece.nbytes]))
+            return views
+
+        parts = [part for group in self._pool.map(read_group, groups) for part in group]
+        parts.sort(key=lambda part: part[0])
+        return [data for _, data in parts]
+
     def _evict(self, *, keep: int) -> None:
-        # The experts of the current call stay cached even when they alone
-        # exceed the budget; the layer needs all of them at once.
+        # The caller moves any entries it needs to keep to the end first.
         while self.bytes > self._cache_bytes and len(self._entries) > keep:
             _, entry = self._entries.popitem(last=False)
             self.bytes -= sum(
@@ -260,21 +337,30 @@ class ExpertStore:
                         )
 
     @classmethod
-    def _layer_bytes(
-        cls, index: dict[str, TensorLocation], module_path: str, num_experts: int
+    def _pass_bytes(
+        cls,
+        index: dict[str, TensorLocation],
+        module_path: str,
+        num_experts: int,
+        max_experts_per_pass: int | None,
     ) -> int:
-        return sum(
-            piece.nbytes
-            for expert in range(num_experts)
-            for projection in cls.PROJECTIONS
-            for component in cls.COMPONENTS
-            if (
-                piece := cls._expert_slice(
-                    index, module_path, projection, component, expert
+        expert_bytes = [
+            sum(
+                piece.nbytes
+                for projection in cls.PROJECTIONS
+                for component in cls.COMPONENTS
+                if (
+                    piece := cls._expert_slice(
+                        index, module_path, projection, component, expert
+                    )
                 )
+                is not None
             )
-            is not None
-        )
+            for expert in range(num_experts)
+        ]
+        if max_experts_per_pass is not None:
+            expert_bytes = sorted(expert_bytes, reverse=True)[:max_experts_per_pass]
+        return sum(expert_bytes)
 
     @classmethod
     def _expert_slice(
@@ -307,7 +393,7 @@ class ExpertStore:
         return int(np.prod(shape)) * np.dtype(cls.DTYPES[dtype][0]).itemsize
 
     @classmethod
-    def _to_array(cls, piece: ExpertSlice, raw: bytes) -> mx.array:
+    def _to_array(cls, piece: ExpertSlice, raw: bytes | memoryview) -> mx.array:
         np_dtype, mx_dtype = cls.DTYPES[piece.location.dtype]
         array = mx.array(np.frombuffer(raw, dtype=np_dtype).reshape(piece.shape))
         return array.view(mx_dtype) if array.dtype != mx_dtype else array
@@ -344,18 +430,73 @@ class OffloadedSwitchGLU(nn.Module):
 
     def __call__(self, x: mx.array, indices: mx.array) -> mx.array:
         # Routing must be known on the host to pick the experts to read.
-        touched = np.unique(np.asarray(indices)).tolist()
-        entries = self._store.get(self._module_path, touched)
+        routes = np.asarray(indices)
+        touched = np.unique(routes)
+        limit = self._store.max_experts_per_pass
+        if limit is not None and len(touched) > limit:
+            return self._grouped_forward(x, routes, touched, limit)
+
+        entries = self._store.get(self._module_path, touched.tolist())
+        try:
+            self._stack(entries)
+            compact = mx.zeros((self._num_experts,), dtype=indices.dtype)
+            compact[mx.array(touched)] = mx.arange(len(touched), dtype=indices.dtype)
+            return SwitchGLU.__call__(self, x, compact[indices])
+        finally:
+            self._reset()
+
+    def _grouped_forward(
+        self, x: mx.array, routes: NDArray, experts: NDArray, limit: int
+    ) -> mx.array:
+        """Finish each group before allocating the next group's expert stack."""
+        flat_routes = routes.ravel()
+        order = np.argsort(flat_routes, kind="stable")
+        sorted_routes = flat_routes[order]
+        starts = np.append(np.searchsorted(sorted_routes, experts), len(order))
+        flat_x = x.reshape(-1, x.shape[-1])
+        # Keep hits for later groups even when the cache is smaller than the
+        # full routed set. Each uncached expert then needs just one read.
+        preserve = self._store.cached_experts(self._module_path, experts.tolist())
+        outputs = []
+        for start in range(0, len(experts), limit):
+            stop = min(start + limit, len(experts))
+            rows = slice(starts[start], starts[stop])
+            group = experts[start:stop]
+            expert_ids = group.tolist()
+            preserve.difference_update(expert_ids)
+            entries = self._store.get(self._module_path, expert_ids, preserve=preserve)
+            activations = flat_x[mx.array(order[rows] // routes.shape[-1])]
+            slots = mx.array(np.searchsorted(group, sorted_routes[rows]), mx.uint32)
+            outputs.append(self._forward_group(activations, slots, entries))
+            del entries
+
+        out = mx.concatenate(outputs)[mx.array(np.argsort(order))]
+        return out.reshape(*routes.shape, out.shape[-1])
+
+    def _forward_group(
+        self,
+        activations: mx.array,
+        slots: mx.array,
+        entries: list[dict[str, dict[str, mx.array]]],
+    ) -> mx.array:
+        try:
+            self._stack(entries)
+            activations = mx.expand_dims(activations, -2)
+            up = self.up_proj(activations, slots, sorted_indices=True)
+            gate = self.gate_proj(activations, slots, sorted_indices=True)
+            out = self.down_proj(
+                self.activation(up, gate), slots, sorted_indices=True
+            ).squeeze(-2)
+            mx.eval(out)
+            return out
+        finally:
+            self._reset()
+
+    def _stack(self, entries: list[dict[str, dict[str, mx.array]]]) -> None:
         for projection, component in self._placeholders:
             self[projection][component] = mx.stack(
                 [entry[projection][component] for entry in entries]
             )
-        compact = mx.zeros((self._num_experts,), dtype=indices.dtype)
-        compact[mx.array(touched)] = mx.arange(len(touched), dtype=indices.dtype)
-        try:
-            return SwitchGLU.__call__(self, x, compact[indices])
-        finally:
-            self._reset()
 
     def _reset(self) -> None:
         for (projection, component), placeholder in self._placeholders.items():

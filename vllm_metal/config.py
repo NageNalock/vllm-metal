@@ -43,6 +43,7 @@ class MetalConfig:
     v_quant: str = "q3_0"  # Value quantization type: q2_0, q3_0, q4_0, q5_0 (Lloyd-Max)
     # >0 streams MoE experts from the checkpoint through a cache of this size.
     moe_expert_cache_bytes: int = 0
+    moe_expert_max_experts_per_pass: int | None = None
 
     def __post_init__(self) -> None:
         if self.multimodal_mode not in VALID_MULTIMODAL_MODES:
@@ -71,15 +72,20 @@ class MetalConfig:
                 )
 
     def apply_moe_expert_offload(self, additional_config: Any) -> None:
-        """Read ``{"moe_expert_offload": {"cache_gb": <float>}}`` from --additional-config."""
+        """Read expert offload settings from --additional-config."""
         if not isinstance(additional_config, dict):
             return
         options = additional_config.get("moe_expert_offload")
         if options is None:
             return
-        if not isinstance(options, dict) or set(options) != {"cache_gb"}:
+        if (
+            not isinstance(options, dict)
+            or "cache_gb" not in options
+            or options.keys() - {"cache_gb", "max_experts_per_pass"}
+        ):
             raise ValueError(
-                "moe_expert_offload takes exactly one key, cache_gb, e.g. "
+                "moe_expert_offload requires cache_gb and optionally accepts "
+                "max_experts_per_pass, e.g. "
                 '--additional-config \'{"moe_expert_offload": {"cache_gb": 2}}\''
             )
         cache_gb = options["cache_gb"]
@@ -91,7 +97,16 @@ class MetalConfig:
             raise ValueError(
                 f"moe_expert_offload.cache_gb must be positive, got {cache_gb!r}"
             )
+        limit = None
+        if "max_experts_per_pass" in options:
+            limit = options["max_experts_per_pass"]
+            if type(limit) is not int or limit <= 0:
+                raise ValueError(
+                    "moe_expert_offload.max_experts_per_pass must be a positive "
+                    f"integer, got {limit!r}"
+                )
         self.moe_expert_cache_bytes = int(cache_gb * 2**30)
+        self.moe_expert_max_experts_per_pass = limit
 
     @classmethod
     def from_env(cls) -> "MetalConfig":
