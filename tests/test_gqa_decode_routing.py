@@ -554,6 +554,38 @@ def test_turboquant_shares_the_work_budget(kv_len, admitted) -> None:
         _restore_test_gpu_cores()
 
 
+@pytest.mark.parametrize(
+    ("kv_len", "head_size", "disabled", "partition"),
+    [
+        (3071, 256, False, 0),
+        (3072, 256, False, 256),
+        (3072, 256, True, 0),
+        (3072, 128, False, 0),
+    ],
+    ids=["below-cutoff", "at-cutoff", "disabled", "narrower-heads"],
+)
+def test_turboquant_short_context_on_m1_pro(
+    kv_len: int, head_size: int, disabled: bool, partition: int
+) -> None:
+    if mx.device_info()["architecture"] != "applegpu_g13s":
+        pytest.skip("Requires M1 Pro or M1 Max GPU architecture")
+
+    with _gpu_cores(16):
+        out, ref = _run_primitive(
+            [kv_len],
+            mx.bfloat16,
+            interleaved=True,
+            seed=13,
+            num_query_heads=16,
+            num_kv_heads=2,
+            head_size=head_size,
+            turboquant=True,
+            gqa_disabled=disabled,
+        )
+    assert get_ops().last_gqa_partition_size() == partition
+    _assert_close(out, ref, mx.bfloat16)
+
+
 def test_matching_float32_uses_fallback() -> None:
     out, ref = _run_primitive([32768], mx.float32, interleaved=True, seed=11)
     _assert_fallback()
