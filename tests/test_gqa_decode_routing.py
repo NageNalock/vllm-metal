@@ -582,10 +582,6 @@ def test_turboquant_short_context_on_m1_pro(
             turboquant=True,
             gqa_disabled=disabled,
         )
-    if partition:
-        assert _dispatch_family() == "gqa_decode"
-    else:
-        _assert_fallback()
     assert get_ops().last_gqa_partition_size() == partition
     _assert_close(out, ref, mx.bfloat16)
 

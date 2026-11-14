@@ -63,7 +63,7 @@ planner does not reject a batch solely because its unsplit query-head grid
 exceeds a core-count threshold. The established per-token fallback retains
 its own split-KV policy.
 
-The single-request decision is unchanged: each partition starts at
+The default cutoff for one request is
 `P * ceil(33 * C / Q)`. Admission and promotion share one rule, with no
 head-ratio correction or per-model budget. This is an empirical policy, not a
 hardware identity or a prediction of the fastest partition at every position.
@@ -137,9 +137,8 @@ Every eligible call additionally requires:
 - Matching FP16/BF16 query, key-cache and value-cache types, or an FP16/BF16
   query over a TurboQuant cache (int8/uint8 K, packed uint8 V). TurboQuant uses
   P256 and normally follows the same work budget. On the 16-core M1 Pro,
-  P256 starts at 3,072 tokens for a single request with 256-wide heads,
-  signed 8-bit keys and 3-bit values. TurboQuant uses GQA only in batches
-  made up entirely of decode rows.
+  a single request with `head_dim=256`, signed 8-bit keys and 3-bit values
+  can use P256 from 3,072 tokens. TurboQuant batches with prefill rows skip GQA.
 - At most **512 MiB total GQA scratch per attention call**. With multi-request
   length metadata, padded rows use compact scratch:
   `Q * sum(ceil(length_i / P)) * (2 * head_dim + 8) + 8 * (B + 1)` bytes for

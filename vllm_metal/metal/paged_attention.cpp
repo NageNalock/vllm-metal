@@ -222,22 +222,16 @@ static int gqa_decode_partition_for_arch(
 static int gqa_decode_partition_for_lengths(
     int num_heads, int num_kv_heads, int head_size,
     const GqaDecodeLengthPlan& plan, int gpu_cores, int block_size,
-    const std::string& gpu_arch, int max_seq_len, GqaCacheFormat cache_format) {
+    const std::string& gpu_arch = "", int max_seq_len = 0,
+    bool turboquant = false) {
   if (gpu_cores <= 0 || plan.num_requests == 0 ||
       !gqa_decode_geometry_supported(
           num_heads, num_kv_heads, head_size, block_size)) return 0;
-
-  // The M1 Pro measurements support P256 from 3K tokens for this shape.
-  if (cache_format == GqaCacheFormat::TurboQuantQ8Q3 && head_size == 256 &&
-      plan.num_requests == 1 && plan.max_length >= 3072 &&
-      gpu_cores == 16 && gpu_arch == "applegpu_g13s") return 256;
-
   int partition = 0;
   for (size_t i = 0; i < kGqaPartitionSizes.size(); ++i) {
     // TurboQuant producers measured faster at P256 than P512 below 64K
-    // tokens on M5 and M1 Max, so they admit only P256.
-    if (cache_format != GqaCacheFormat::Unquantized &&
-        kGqaPartitionSizes[i] != 256) continue;
+    // tokens on M5 and M1 Max, so they admit only P256, under the same budget.
+    if (turboquant && kGqaPartitionSizes[i] != 256) continue;
     if (plan.full_partitions[i] * num_heads >= kGqaSimdGroupsPerCore * gpu_cores) {
       partition = kGqaPartitionSizes[i];
       break;
@@ -256,9 +250,9 @@ static int gqa_decode_partition_for_lengths(
 int gqa_decode_plan_for_lengths(
     int num_heads, int num_kv_heads, int head_size,
     const GqaDecodeLengthPlan& plan, int gpu_cores, int block_size,
-    const std::string& gpu_arch, int max_seq_len, GqaCacheFormat cache_format) {
+    const std::string& gpu_arch, int max_seq_len, bool turboquant) {
   const int partition = gqa_decode_partition_for_lengths(num_heads, num_kv_heads,
-      head_size, plan, gpu_cores, block_size, gpu_arch, max_seq_len, cache_format);
+      head_size, plan, gpu_cores, block_size, gpu_arch, max_seq_len, turboquant);
   if (partition == 0) return 0;
   const int64_t length = std::max(max_seq_len, plan.max_length);
   const int64_t partitions = (length + partition - 1) / partition;
@@ -888,20 +882,27 @@ static PagedAttentionPlan select_paged_attention_route(
           m.num_heads, m.num_kv_heads,
           m.head_size, m.block_size);
 
-  auto cache_format = GqaCacheFormat::Unquantized;
-  if (m.use_turboquant) {
-    cache_format = m.key_dtype == int8 && m.v_bits == 3
-        ? GqaCacheFormat::TurboQuantQ8Q3 : GqaCacheFormat::TurboQuant;
+  int gqa_partition_size = 0;
+  if (gqa_supported && m.gqa_test_partition > 0) {
+    gqa_partition_size = m.gqa_test_partition;
+  } else if (gqa_supported) {
+    const int gpu_cores = get_detected_gpu_cores();
+    const auto& architecture = get_architecture();
+    const bool single_decode = num_seqs == 1 && m.decode_only_rows == 0;
+    if (single_decode && m.use_turboquant && m.key_dtype == int8 && m.v_bits == 3 &&
+        m.head_size == 256 && m.max_seq_len >= 3072 &&
+        gpu_cores == 16 && architecture == "applegpu_g13s") {
+      // Serving measurements on M1 Pro support P256 from 3,072 tokens.
+      gqa_partition_size = 256;
+    } else {
+      gqa_partition_size = gqa_decode_plan_for_lengths(
+          m.num_heads, m.num_kv_heads, m.head_size,
+          single_decode
+              ? gqa_decode_length_plan(std::array<int, 1>{m.max_seq_len})
+              : m.gqa_length_plan,
+          gpu_cores, m.block_size, architecture, m.max_seq_len, m.use_turboquant);
+    }
   }
-  const int gqa_partition_size = !gqa_supported ? 0
-      : m.gqa_test_partition > 0 ? m.gqa_test_partition
-      : gqa_decode_plan_for_lengths(
-            m.num_heads, m.num_kv_heads, m.head_size,
-            num_seqs == 1 && m.decode_only_rows == 0
-                ? gqa_decode_length_plan(std::array<int, 1>{m.max_seq_len})
-                : m.gqa_length_plan,
-            get_detected_gpu_cores(), m.block_size, get_architecture(), m.max_seq_len,
-            cache_format);
 
   const int64_t partitions = gqa_partition_size > 0
       ? (static_cast<int64_t>(m.max_seq_len) + gqa_partition_size - 1) /
